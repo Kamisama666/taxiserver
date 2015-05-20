@@ -8,6 +8,17 @@ var requester = zmq.socket('req');
 requester.connect("ipc://taxiserver");
 
 
+/**
+ * The object for the user inside the queue
+ * @param {string} userid   The user id
+ * @param {object} location The location of the user (geoutil)
+ */
+function queueUser(userid,location) {
+	this.userid=userid;
+	this.location=location;
+	this.lastUpdate=new Date();
+}
+
 
 /**
  * Creates a queue for users. The queue is stored in memory and in a database.
@@ -33,10 +44,10 @@ function queryQueue(queryName,parameters,cb) {
 	requester.on("message", function(reply) {
 		var result={};
 		var response=JSON.parse(reply.toString());
-		console.log("Response for ",myMsgID,": ",response);
-		if (response.Id!==myMsgID)
+		if (response.ID!==myMsgID)
 			return;
 
+		console.log("Response for ",myMsgID,": ",response);
 		result.State=response.State;
 		if (result.State==="True") {
 			result.Content=response.Content;
@@ -47,7 +58,7 @@ function queryQueue(queryName,parameters,cb) {
 		cb(true,result);
 	});
 
-	var request=JSON.stringify({Function:queryName,Arguments:parameters,Id:myMsgID});
+	var request=JSON.stringify({Function:queryName,Arguments:parameters,ID:myMsgID});
 	console.log("Request ",myMsgID,": ",request);
 	requester.send(request);
 
@@ -58,7 +69,7 @@ function queryQueue(queryName,parameters,cb) {
 /**
  * Checks if the user is on the queue
  * @param  {string}  userid The user id
- * @return {Boolean} Trueif it is, false if not
+ * @param  {Function} cb         Callback function
  */
 function isUserOnQueue(userid,cb) {
 	queryQueue("isUserOnQueue",[userid],cb);
@@ -67,7 +78,7 @@ function isUserOnQueue(userid,cb) {
 
 /**
  * Checks if the queue is empty
- * @return {Boolean} True if it is, false if not
+ * @param  {Function} cb         Callback function
  */
 function isQueueEmpty(cb) {
 	queryQueue("isQueueEmpty",[],cb)
@@ -76,15 +87,10 @@ function isQueueEmpty(cb) {
 /**
  * Gets the position of an user on queue
  * @param  {string} userid The user id
- * @return {integer} if the user is found, the position starting on 0. If not, it returns -1
+ * @param  {Function} cb         Callback function
  */
-function getPositionOfUser(userid) {
-	for (var i=0;i<queue.length;i++) {
-		if ( userid === _.propertyOf(queue[i])('userid') ) {
-			return i;
-		}
-	}
-	return -1;
+function getPositionOfUser(userid,cb) {
+	queryQueue("getPositionOfUser",[userid],cb)
 }
 
 
@@ -93,15 +99,7 @@ function getPositionOfUser(userid) {
  * @param  {string} userid The user id
  * @param {Function} cb     The callback function (if the user is found, the position starting on 1. If not, it returns -1)
  */
-exports.getPositionOfUser=function(userid,cb) {
-	var result=getPositionOfUser(userid);
-	if (result!==-1) {
-		cb(true,result+1);
-	}
-	else {
-		cb(false,result);
-	}
-}
+exports.getPositionOfUser=getPositionOfUser;
 
 
 /**
@@ -113,23 +111,36 @@ exports.getPositionOfUser=function(userid,cb) {
  */
 exports.addToQueue = function(userid,lat,long,cb) {
 	var newUser;
+	
+	queryQueue("isUserOnQueue",[userid],isUserOnQueueQuery)
+
+	function addToQueueQuery(result,content) {
+		if (!content.State==="True")
+			return cb(false,content.Error);
+
+		return cb(true,"The user "+userid+" has beed added to the queue");
+	}
+
+
 	function addToQueueDB(result,content) {
 		if (result) {
-			queue.push(newUser);
-			return cb(true,"The user "+userid+" has beed added to the queue");
+			queryQueue("addToQueue",[userid,lat,long],addToQueueQuery);
 		}
 		else {
 			return cb(false,content);
 		}
 	}
 
-	if (!isUserOnQueue(userid)) {
-		var userlocation=new gu.LatLon(lat,long);
-		newUser=new queueUser(userid,userlocation);
-		datalayer.addUserToQueue(newUser,addToQueueDB);
-	}
-	else {
-		return cb(false,"The user "+userid+" is already on queue");	
+
+	function isUserOnQueueQuery(result,content) {
+		if (content.Content) {
+			return cb(false,"The user "+userid+" is already on queue");
+		}
+		else {
+			var userlocation=new gu.LatLon(lat,long);
+			newUser=new queueUser(userid,userlocation);
+			datalayer.addUserToQueue(newUser,addToQueueDB);
+		}
 	}
 }
 

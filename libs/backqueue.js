@@ -47,7 +47,7 @@ function isUserOnQueueExternal(userid) {
 	var result={};
 	result.State="True";
 	result.Content=isOnQueue;
-	return isOnQueue;
+	return result;
 }
 
 
@@ -87,7 +87,7 @@ function getPositionOfUser(userid) {
 
 
 function getPositionOfUserExternal(userid) {
-	var result{State:"True"};
+	var result={State:"True"};
 	result.Content=getPositionOfUser(userid);
 	return result;
 }
@@ -249,7 +249,7 @@ function getAllLastUpdates() {
 
 /**
  * Routes the message to the requested function
- * @param  {array} jmessage The incoming message with the format: {Function:%function_name%,Arguments:[%parameter1,parameter2,...%],Id:%MSGID%}
+ * @param  {array} jmessage The incoming message with the format: {Function:%function_name%,Arguments:[%parameter1,parameter2,...%],ID:%MSGID%}
  * @return {object}         The response emitted by the requested function
  */
 function messageRouter(jmessage) {
@@ -260,12 +260,13 @@ function messageRouter(jmessage) {
 	var reqFunction=jmessage["Function"];
 	var reqArguments=jmessage["Arguments"];
 	var result;
+
 	switch(reqFunction) {
 		case "isUserOnQueue":
-			result=isUserOnQueueExternal.apply(this,arguments);
+			result=isUserOnQueueExternal.apply(this,reqArguments);
 			break;
 		case "isQueueEmpty":
-			result=isQueueEmptyExternal.apply(this,arguments);
+			result=isQueueEmptyExternal.apply(this,reqArguments);
 			break;
 		case "getPositionOfUser":
 			result=getPositionOfUserExternal.apply(this,reqArguments);
@@ -296,7 +297,8 @@ function messageRouter(jmessage) {
 		default:
 			result={State:"False",Error:"Invalid function name"};
 	}
-	result.Id=jmessage.Id
+	result["ID"]=jmessage.ID;
+
 	return result;
 }
 
