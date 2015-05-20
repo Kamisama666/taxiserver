@@ -1,0 +1,32 @@
+{
+  "name": "taxiserver",
+  "version": "1.0.0",
+  "description": "Server for the taxi service",
+  "main": "server.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "dependencies": {
+    "bcrypt": "^0.8.2",
+    "cron": "^1.0.9",
+    "geolib": "^2.0.14",
+    "geoutils": "^0.1.0",
+    "jsdoc": "^3.3.0",
+    "mariasql": "^0.1.22",
+    "nanomsg": "^1.1.1",
+    "nconf": "^0.7.1",
+    "restify": "^2.8.5",
+    "restify-oauth2": "^4.0.2",
+    "sync": "^0.2.5",
+    "underscore": "^1.8.2",
+    "winston": "^0.9.0",
+    "zmq": "^2.11.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "author": "Ángel García Jiménez",
+  "license": "ISC"
+}

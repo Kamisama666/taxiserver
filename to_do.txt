@@ -1,0 +1,20 @@
+#####Servidor#####
+	-La DB solo debe guardar los hashes de las contraseñas ✓
+	-Estandarizar errores devueltos al cliente
+	-Permitir consultar las zonas registradas ✓
+	-Permitir consultar si se encuentra dentro de las zonas registradas ✓
+	-Restringir a un sólo token por usuario ✓
+	-Desacoplar apiroutes y apihandler ✓
+	-Usar https ✓
+	-Encontrar una forma de que el usuario y la contraseña viajen encriptados con el secret ✓
+	-Añadir mensajes de log a los apihandlers ✓
+	-Capturar errores en datacrypt.decrypt.decipher ✓
+	-Almacenar la cola en la DB ✓
+	-Vaciar la cola en DB al finalizar proceso ✓
+	-Añadir a queue un funcion para sincronizar la cola en memoria con la de la de la DB
+	-Un modulo de restify que retorne las conexiones cuando la base de datos esta caida
+	-Hacer un modulo que obtenga la estructura de la DB de un archivo JSON y haga un objeto con ella
+	-Hacer un modulo para la configuracion del servidor
+
+#####Aplicacion###
+

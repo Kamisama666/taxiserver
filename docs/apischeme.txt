@@ -1,0 +1,79 @@
+==========
+API SCHEME
+==========
+Hay dos tipos de usuario:
+	-Conductores
+	-Servidores de comunicacion
+
+Los recursos pueden ser de tres tipos:
+	-PUBLIC
+	-DRIVER
+	-PRIVATE
+	-COMMSERVER 
+
+PUBLIC
+======
+No exigen autorización
+
+DRIVER
+======
+Aquellos recursos que pueden ser usados por cualquiera de los conductores o los commserver
+
+PRIVATE
+=======
+Aquellos recursos que pertenecen a un determinado conductor y solo pueden ser usados por este.
+
+COMMSERVER
+==========
+Aquellos recursos que pueden ser accedidos por el servidor de comunicaciones (commserver). 
+
+
+Siguendo este esquema, un conductor puede acceder a la información de caulquier otro conductor, pero solo él puede añadirle a la cola.
+
+
+
+========
+API URIS
+========
+
+/token/:userid <------POST solicitud de un nuevo token para el usuario
+
+/api/:userid <------GET links a las distintas versiones de la api (PUBLIC)
+
+/api/:apiversion/:userid/users/drivers <------GET información de todos los taxistas (DRIVER)
+/api/:apiversion/:userid/users/drivers/:requserid <------GET información de un taxista (DRIVER)
+
+/api/:apiversion/:userid/queue <------GET Listado con todos los taxistas en cola y su posición (DRIVER)
+/api/:apiversion/:userid/queue <------POST añade al taxista a la cola (PRIVATE)
+/api/:apiversion/:userid/queue/:requserid <------GET Posición del taxista en cola (DRIVER)
+/api/:apiversion/:userid/queue/:requserid <------DELETE saca al taxista de la cola (PRIVATE)
+/api/:apiversion/:userid/queue/:requserid/location <------GET Localización del taxista (DRIVER)
+/api/:apiversion/:userid/queue/:requserid/location <------PUT Localización del taxista (PRIVATE)
+/api/:apiversion/:userid/queue/next <------GET saca al primer taxista de la cola (COMMSERVER)
+
+/api/:apiversion/:userid/localizations <------GET todas las localizaciones validas (DRIVER)
+/api/:apiversion/:userid/localizations <------POST comprueba si las coodenadas son validas (DRIVER)
+/api/:apiversion/:userid/localizations/:locationid <------GET la información de la localizacion (DRIVER)
+/api/:apiversion/:userid/localizations/:locationid <------POST comprueba si unas coodenadas se encuentran en esta localizacion (DRIVER)
+
+
+==========
+RESPUESTAS
+==========
+
+Las respuestas que devuelven el servidor siguen el siguiente esquema:
+	-Si no ha corrido ningún error:
+		{
+			"State":"True",
+			"Content":$response
+		}
+		
+		En circunstancias normales $response contiene la respuesta encriptada. Una vez desencriptada el texto seguira este mismo formato.
+
+	-Si ha ocurrido un error:
+		{
+			"State":"False",
+			"Error":$error_description
+		}
+
+
