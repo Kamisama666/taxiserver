@@ -138,11 +138,13 @@ function takeUserFromQueue(userid) {
  * Takes the first user from the queue and sends it back
  */
 function takeNextUserFromQueue() {
-	var nextUser;
-	
 	if (!isQueueEmpty()) {
-		nextUser=queue.shift();
-		return {State:"True",Content:nextUser};
+		var nextUser=queue.shift();
+		var newUser={};
+		newUser.userid=nextUser.userid;
+		newUser.lat=nextUser.location.lat();
+		newUser.lon=nextUser.location.lon();
+		return {State:"True",Content:newUser};
 		
 	}
 	else {
@@ -182,14 +184,11 @@ function getUserLocation(userid) {
 	var userPosition=getPositionOfUser(userid);
 
 	if (userPosition!==-1) {
-		if (queue[userPosition].userid===userid) {
-			var currentUser=queue[userPosition];
-			var response={};
-			response.latitude=currentUser.location.lat();
-			response.longitude=currentUser.location.lon();
-			return {State:"True",Content:response};
-		}
-		
+		var currentUser=queue[userPosition];
+		var response={};
+		response.latitude=currentUser.location.lat();
+		response.longitude=currentUser.location.lon();
+		return {State:"True",Content:response};
 	}
 	else {
 		return {State:"False",Error:"There is no users on queue"}
@@ -206,16 +205,19 @@ function getUserLocation(userid) {
 function updateDriverLocation(userid,lat,long) {
 	var userPosition=getPositionOfUser(userid);
 
-	if (userPosition!==-1) {
-		if (queue[userPosition].userid===userid) {
-			queue[userPosition].location=new gu.LatLon(lat,long);
-			queue[userPosition].lastUpdate=new Date();
-			return {State:"True",Content:"User updated"};
-		}
-	}
-	else {
+	if (userPosition===-1)
 		return {State:"False",Error:"The user is not on queue"}
-	}
+
+	queue[userPosition].location=new gu.LatLon(lat,long);
+	queue[userPosition].lastUpdate=new Date();
+
+	var userUpdated={};
+	userUpdated.userid=userid;
+	userUpdated.lat=queue[userPosition].location.lat();
+	userUpdated.lon=queue[userPosition].location.lon();
+	userUpdated.lastUpdate=queue[userPosition].lastUpdate.toString();
+
+	return {State:"True",Content:userUpdated};
 }
 
 
@@ -226,7 +228,7 @@ function updateDriverLocation(userid,lat,long) {
 function getUserLastUpdate(userid) {
 	var userposition=getPositionOfUser(userid);
 	if (userposition!==-1) {
-		return {State:"True",Content:queue[userposition].lastUpdate};
+		return {State:"True",Content:queue[userposition].lastUpdate.toString()};
 	}
 	else {
 		return {State:"False",Error:"The user is not on queue"}
@@ -241,7 +243,7 @@ function getAllLastUpdates() {
 	var result=[];
 	for (var i=0;i<queue.length;i++) {
 		var currentUser=queue[i];
-		result.push({userid:currentUser.userid,lastUpdate:currentUser.lastUpdate});
+		result.push({userid:currentUser.userid,lastUpdate:currentUser.lastUpdate.toString()});
 	}
 	return {State:"True",Content:result};
 }
@@ -260,7 +262,7 @@ function messageRouter(jmessage) {
 	var reqFunction=jmessage["Function"];
 	var reqArguments=jmessage["Arguments"];
 	var result;
-
+	console.log(reqFunction);
 	switch(reqFunction) {
 		case "isUserOnQueue":
 			result=isUserOnQueueExternal.apply(this,reqArguments);
@@ -294,6 +296,7 @@ function messageRouter(jmessage) {
 			break;
 		case "getAllLastUpdates":
 			result=getAllLastUpdates.apply(this,reqArguments);
+			break;
 		default:
 			result={State:"False",Error:"Invalid function name"};
 	}

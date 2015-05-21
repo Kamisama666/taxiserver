@@ -8,17 +8,6 @@ var requester = zmq.socket('req');
 requester.connect("ipc://taxiserver");
 
 
-/**
- * The object for the user inside the queue
- * @param {string} userid   The user id
- * @param {object} location The location of the user (geoutil)
- */
-function queueUser(userid,location) {
-	this.userid=userid;
-	this.location=location;
-	this.lastUpdate=new Date();
-}
-
 
 /**
  * Creates a queue for users. The queue is stored in memory and in a database.
@@ -29,6 +18,19 @@ function QueueMain(dblayer) {
 	return exports;
 }
 module.exports = QueueMain;
+
+
+
+/**
+ * The object for the user inside the queue
+ * @param {string} userid   The user id
+ * @param {object} location The location of the user (geoutil)
+ */
+function queueUser(userid,location) {
+	this.userid=userid;
+	this.location=location;
+	this.lastUpdate=new Date();
+}
 
 
 /**
@@ -47,7 +49,6 @@ function queryQueue(queryName,parameters,cb) {
 		if (response.ID!==myMsgID)
 			return;
 
-		console.log("Response for ",myMsgID,": ",response);
 		result.State=response.State;
 		if (result.State==="True") {
 			result.Content=response.Content;
@@ -59,7 +60,6 @@ function queryQueue(queryName,parameters,cb) {
 	});
 
 	var request=JSON.stringify({Function:queryName,Arguments:parameters,ID:myMsgID});
-	console.log("Request ",myMsgID,": ",request);
 	requester.send(request);
 
 }
@@ -114,35 +114,32 @@ exports.addToQueue = function(userid,lat,long,cb) {
 	
 	queryQueue("isUserOnQueue",[userid],isUserOnQueueQuery)
 
+	function isUserOnQueueQuery(result,content) {
+		if (content.Content) {
+			return cb(false,"The user "+userid+" is already on queue");
+		}
+		var userlocation=new gu.LatLon(lat,long);
+		newUser=new queueUser(userid,userlocation);
+		datalayer.addUserToQueue(newUser,addToQueueDB);
+	}
+
+
+	function addToQueueDB(result,content) {
+		if (!result)
+			return cb(false,content);
+
+		queryQueue("addToQueue",[userid,lat,long],addToQueueQuery);
+	}
+
+
 	function addToQueueQuery(result,content) {
 		if (!content.State==="True")
 			return cb(false,content.Error);
 
 		return cb(true,"The user "+userid+" has beed added to the queue");
 	}
-
-
-	function addToQueueDB(result,content) {
-		if (result) {
-			queryQueue("addToQueue",[userid,lat,long],addToQueueQuery);
-		}
-		else {
-			return cb(false,content);
-		}
-	}
-
-
-	function isUserOnQueueQuery(result,content) {
-		if (content.Content) {
-			return cb(false,"The user "+userid+" is already on queue");
-		}
-		else {
-			var userlocation=new gu.LatLon(lat,long);
-			newUser=new queueUser(userid,userlocation);
-			datalayer.addUserToQueue(newUser,addToQueueDB);
-		}
-	}
 }
+
 
 /**
  * Takes an user from the queue
@@ -150,22 +147,33 @@ exports.addToQueue = function(userid,lat,long,cb) {
  * @param {Function} cb     The callback function
  */
 exports.takeUserFromQueue = function(userid,cb) {
-	function takeUserFromQueueDB(result,content) {
-		if (result) {
-			queue.splice(position,1);
-			return cb(true,"The user "+userid+" has been removed from queue");
-		}
-		else {
-			return cb(false,content);
-		}
-	}
 
-	var position=getPositionOfUser(userid);
-	if (position!==-1) {
+	queryQueue('getPositionOfUser',[userid],getPositionOfUserQuery)
+
+
+	function getPositionOfUserQuery(result,content) {
+		var position=content.Content;
+		if (position===-1)
+			return cb(false,"The user "+userid+" is not on queue");
+
 		datalayer.takeUserFromQueue(userid,takeUserFromQueueDB);
 	}
-	else {
-		cb(false,"The user "+userid+" is not on queue");
+
+
+	function takeUserFromQueueDB(result,content) {
+		if (!result)
+			return cb(false,content);
+		
+		queryQueue('takeUserFromQueue',[userid],takeUserFromQueueQuery)
+		
+	}
+
+
+	function takeUserFromQueueQuery(result,content) {
+		if (content.State!=="True");
+			return cb(false,content.Error);
+
+		return cb(true,"The user "+userid+" has been removed from queue");
 	}
 }
 
@@ -176,28 +184,56 @@ exports.takeUserFromQueue = function(userid,cb) {
 exports.takeNextUserFromQueue = function(cb) {
 	var nextUser;
 	var response={};
+
+	queryQueue('isQueueEmpty',[],isQueueEmptyQuery);
+
+
+	function isQueueEmptyQuery(result,content) {
+		if (content.Content)
+			return cb(false,"There is no users on queue");
+
+		queryQueue('takeNextUserFromQueue',[],takeNextUserFromQueueQuery);
+	}
+
+
+	function takeNextUserFromQueueQuery(result,content) {
+		if (content.State!=='True')
+			return cb(false,content.Error);
+
+		nextUser=content.Content;
+		datalayer.takeUserFromQueue(nextUser.userid,takeNextUserFromQueueDB);
+
+	}
+
+
 	function takeNextUserFromQueueDB(result,content) {
 		if (result) {
 			response.userid=nextUser.userid;
-			response.lat=nextUser.location.lat();
-			response.long=nextUser.location.lon();
+			response.lat=nextUser.lat;
+			response.long=nextUser.lon;
 			return cb(true,response);
 		}
 		else {
 			//Put it at the end
-			queue.push(nextUser);
-			return cb(false,content);
+			queryQueue(
+				"addToQueue",
+				[
+					nextUser.userid,
+					nextUser.lat,
+					nextUser.lon
+				],
+				addToQueueQuery);
 		}
 	}
+
+
+	function addToQueueQuery(result,content) {
+		if (!content.State==="True")
+			return cb(false,content.Error);
+
+		return cb(false,"The user "+userid+" couldn't be taken from the queue. It has been added again");
+	}
 	
-	if (!isQueueEmpty()) {
-		nextUser=queue.shift();
-		datalayer.takeUserFromQueue(nextUser.userid,takeNextUserFromQueueDB);
-		
-	}
-	else {
-		cb(false,"There is no users on queue");
-	}
 };
 
 
@@ -206,22 +242,26 @@ exports.takeNextUserFromQueue = function(cb) {
  * @param {Function} cb     The callback function
  */
 exports.getQueueContent = function(cb) {
-	if (!isQueueEmpty()) {
-		var response=[];
-		for (var i=0;i<queue.length;i++) {
-			var currentUser=queue[i];
-			var responseUser={};
-			responseUser.userid=currentUser.userid;
-			responseUser.latitude=currentUser.location.lat();
-			responseUser.longitude=currentUser.location.lon();
-			responseUser.position=i+1;
-			response.push(responseUser)
-		}
-		cb(true,response);
+
+	queryQueue('isQueueEmpty',[],isQueueEmptyQuery);
+
+	
+	function isQueueEmptyQuery(result,content) {
+		if (content.Content)
+			return cb(false,"There is no users on queue");
+
+		queryQueue('getQueueContent',[],getQueueContentQuery)
+
 	}
-	else {
-		cb(false,"There is no users on queue");
-	}	
+
+
+	function getQueueContentQuery(result,content) {
+		if (content.State!=='True')
+			return cb(false,content.Error);
+
+		cb(true,content.Content);
+	}
+
 }
 
 
@@ -231,20 +271,21 @@ exports.getQueueContent = function(cb) {
  * @param {Function} cb     The callback function
  */
 exports.getUserLocation = function(userid,cb) {
-	if (isUserOnQueue(userid)) {
-		for (var i=0;i<queue.length;i++) {
-			if (queue[i].userid===userid) {
-				var currentUser=queue[i];
-				var response={};
-				response.latitude=currentUser.location.lat();
-				response.longitude=currentUser.location.lon();
-				cb(true,response);
-				break;
-			}
-		}
+	queryQueue('isUserOnQueue',[userid],isUserOnQueueQuery);
+
+	function isUserOnQueueQuery(result,content) {
+		if (!content.Content)
+			return cb(false,'The user is not on queue');
+
+		queryQueue('getUserLocation',[userid],getUserLocationQuery);	
 	}
-	else {
-		cb(false,'The user is not on queue');
+
+
+	function getUserLocationQuery(result,content) {
+		if (content.State!=='True')
+			return cb(false,content.Error);
+
+		return cb(true, content.Content);
 	}
 }
 
@@ -260,30 +301,30 @@ exports.updateDriverLocation = function(userid,lat,long,cb) {
 	var userUpdatedPosition;
 	var userUpdated;
 
-	function updateDriverLocationDB(result,content) {
-		if (result) {
-			queue[userUpdatedPosition]=userUpdated;
-			cb(true,'The user '+userid+' location has been updated');
-		}
-		else {
-			cb(false,content);
-		}
+	queryQueue('isUserOnQueue',[userid],isUserOnQueueQuery);
+
+	function isUserOnQueueQuery(result,content) {
+		if (!content.Content)
+			return cb(false,'There user is not on queue');
+
+		queryQueue('updateDriverLocation',[userid,lat,long],updateDriverLocationQuery);
 	}
 
-	if (isUserOnQueue(userid)) {
-		for (var i=0;i<queue.length;i++) {
-			if (queue[i].userid===userid) {
-				userUpdatedPosition=i;
-				userUpdated=JSON.parse( JSON.stringify( queue[i] ) );;
-				userUpdated.location=new gu.LatLon(lat,long);
-				userUpdated.lastUpdate=new Date();
-				datalayer.updateUserFromQueue(userUpdated,updateDriverLocationDB);
-				break;
-			}
-		}
+	function updateDriverLocationQuery(result,content) {
+		if (content.State!=='True')
+			return cb(false,content.Error);
+
+		userUpdatedPosition=new gu.LatLon(lat,long);
+		userUpdated=new queueUser(userid,userUpdatedPosition);
+		userUpdated.lastUpdate=new Date(content.Content.lastUpdate);
+		datalayer.updateUserFromQueue(userUpdated,updateDriverLocationDB);
 	}
-	else {
-		cb(false,'The user is not on queue');
+
+	function updateDriverLocationDB(result,content) {
+		if (!result)
+			return cb(false,content);
+		
+		return cb(true,'The user '+userid+' location has been updated');
 	}
 }
 
@@ -293,12 +334,14 @@ exports.updateDriverLocation = function(userid,lat,long,cb) {
  * @param {Function} cb     The callback function
  */
 exports.getUserLastUpdate = function(userid,cb) {
-	var userposition=getPositionOfUser(userid);
-	if (userposition!==-1) {
-		cb(true,queue[userposition].lastUpdate);
-	}
-	else {
-		cb(false,'The user is not on queue');
+	queryQueue('getUserLastUpdate',[userid],getUserLastUpdateQuery);
+
+
+	function getUserLastUpdateQuery(result,content) {
+		if (content.State!=='True')
+			return cb(false,content.Error);
+
+		return cb(true,new Date(content.Content));
 	}
 }
 
@@ -307,10 +350,13 @@ exports.getUserLastUpdate = function(userid,cb) {
  * @param {Function} cb     The callback function
  */
 exports.getAllLastUpdates = function(cb) {
-	var result=[];
-	for (var i=0;i<queue.length;i++) {
-		var currentUser=queue[i];
-		result.push({userid:currentUser.userid,lastUpdate:currentUser.lastUpdate});
+	queryQueue('getAllLastUpdates',[],getAllLastUpdatesQuery);
+
+
+	function getAllLastUpdatesQuery(result,content) {
+		for (var i=0;i<content.Content.length;i++) {
+			content.Content[i].lastUpdate=new Date(content.Content[i].lastUpdate);
+		}
+		cb(true,content.Content)
 	}
-	cb(true,result);
 }
