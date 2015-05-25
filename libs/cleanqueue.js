@@ -31,10 +31,11 @@ function cleanQueue() {
  * @param  {object} logging Logging module
  * @return {object}         This module itself
  */
-module.exports = function(iqueue,logging){
+function cleanQueue(iqueue,logging){
 	queue=iqueue;
 	log=logging;
 	var cleaner=new CronJob({cronTime:"*/5 * * * *",onTick:cleanQueue,start:true});
-	log.info("Queue Cleaner iniciated.");
+	//log.info("Queue Cleaner iniciated.");
 	return cleaner;
 }
+module.exports = cleanQueue;

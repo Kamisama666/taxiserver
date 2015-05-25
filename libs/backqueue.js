@@ -6,6 +6,7 @@ var nano = require('nanomsg');
 var queue=[];
 var responder = zmq.socket('router');
 
+console.log("Queue process iniciated");
 
 /**
  * The object for the user inside the queue
@@ -88,7 +89,8 @@ function getPositionOfUser(userid) {
 
 function getPositionOfUserExternal(userid) {
 	var result={State:"True"};
-	result.Content=getPositionOfUser(userid);
+	var position=getPositionOfUser(userid);
+	result.Content=(position!=='1')?position+1:-1;
 	return result;
 }
 
@@ -262,7 +264,7 @@ function messageRouter(jmessage) {
 	var reqFunction=jmessage["Function"];
 	var reqArguments=jmessage["Arguments"];
 	var result;
-	console.log(reqFunction);
+
 	switch(reqFunction) {
 		case "isUserOnQueue":
 			result=isUserOnQueueExternal.apply(this,reqArguments);
@@ -310,7 +312,7 @@ responder.on('message', function() {
 		var message= JSON.parse(arguments[2].toString());
 		var response=JSON.stringify(messageRouter(message));
 
-		console.log("Sending response: "+response);
+		//console.log("Sending response: "+response);
 		responder.send([identity, '', response]);
 	}
 );

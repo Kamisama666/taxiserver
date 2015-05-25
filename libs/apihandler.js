@@ -335,9 +335,10 @@ exports.apiGetDriverPosition = function(req,res,next) {
 	if (isDriver(req)) {
 		queue.getPositionOfUser(req.params.requserid, function(result,content){
 			var response={}
-			if (result) {
+			console.log(content.Content);
+			if (result && content.Content!==-1) {
 				response.State="True";
-				response.Content={'userPosition':content}
+				response.Content={'userPosition':content.Content}
 			}
 			else {
 				response.State="False";
