@@ -1,12 +1,13 @@
 "use strict";
 var restify = require('restify');
 var util = require('util')
-var nconf = require('nconf').file({ file: './config.json' }); //configuration modules
+var nconf = require('nconf').file({ file: './config/config.json' }); //configuration modules
 var log = require('./libs/log')(nconf.get("application:mode"),"logs/client.log"); //wrapper for the loggin module winston
 var dbclient = require('./libs/dbconnect')(nconf,log); //wrapper for the mariadb module that connect to db by itself
 var datalayer = require('./libs/datalayer')(dbclient);
 var datacrypt = require('./libs/datacrypt')(datalayer);
 var _ = require('underscore');
+var util = require('util');
 
 var token='Bearer AARtXcVZUg/X2l8iPOC0EJXg6B/mB9ZlWPDrB2rAbyQ=';
 var encryptedToken='3c9c19b8014a450e58f725141d64f18942fd281cf0bc9f5afbf74b2d37c5d14492e120122f9d2b336ea4f4c24983afcb4c50aa';
@@ -189,7 +190,7 @@ function sendMessage6(result,content) {
 //tokenClient.get('/api/1',processResponse);
 //tokenClient.get('/api/1.0.0/1/users/drivers',processResponse);
 //tokenClient.get('/api/1.0.0/1/users/drivers/2',processResponse);
-//tokenClient.get('/api/1.0.0/1/queue',processResponse);
+tokenClient.get('/api/1.0.0/1/queue',processResponse);
 //tokenClient.post('/api/1.0.0/1/queue',{"latitude":"51.5125","longitude":"7.485"},processResponse);
 //tokenClient.get('/api/1.0.0/1/queue/1',processResponse);
 //tokenClient.del('/api/1.0.0/1/queue/1', processResponse);

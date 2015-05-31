@@ -5,7 +5,7 @@ var datalayer;
 var log;
 var Sync = require('sync');
 
-function shutdown(resServer,clientdb,dblayer,logging) {
+function shutdown(resServer, clientdb, dblayer, logging) {
 	server=resServer;
 	dbclient=clientdb;
 	log=logging;
@@ -33,7 +33,12 @@ function closeServer(cb) {
 }
 
 function closeDB(cb) {
-	dbclient.end();
+	if (dbclient.connected) {
+		dbclient.end();
+	}
+	else {
+		cb(null,null);
+	}
 	dbclient.on('close',function(info) {
 				log.info("Server closed");
 				cb(null,null);
@@ -41,10 +46,18 @@ function closeDB(cb) {
 }
 
 function clearQueue(cb) {
-	datalayer.emptyQueue(function(result,content){
-		log.info("Queue cleaned")
+	if (dbclient.connected) {
+		datalayer.emptyQueue(function(result,content){
+			log.info("Queue cleaned")
+			cb(null,null);
+		});
+	}
+	else {
 		cb(null,null);
-	});
+	}
+	
+		
+
 }
 
 
