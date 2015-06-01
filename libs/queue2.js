@@ -3,9 +3,10 @@ var gu = require('geoutils');
 var _ = require('underscore');
 var zmq = require('zmq');
 var datalayer;
+var queueUser = require('./queueuser');
 var msgid=1;
 var requester = zmq.socket('req');
-requester.connect("ipc://taxiserver");
+
 
 
 
@@ -15,6 +16,7 @@ requester.connect("ipc://taxiserver");
  */
 function QueueMain(dblayer) {
 	datalayer=dblayer;
+	requester.connect("ipc:///tmp/taxiserver");
 	return exports;
 }
 module.exports = QueueMain;
@@ -25,12 +27,12 @@ module.exports = QueueMain;
  * The object for the user inside the queue
  * @param {string} userid   The user id
  * @param {object} location The location of the user (geoutil)
- */
+ 
 function queueUser(userid,location) {
 	this.userid=userid;
 	this.location=location;
 	this.lastUpdate=new Date();
-}
+}*/
 
 
 /**
@@ -61,7 +63,6 @@ function queryQueue(queryName,parameters,cb) {
 
 	var request=JSON.stringify({Function:queryName,Arguments:parameters,ID:myMsgID});
 	requester.send(request);
-
 }
 
 
@@ -111,15 +112,21 @@ exports.getPositionOfUser=getPositionOfUser;
  */
 exports.addToQueue = function(userid,lat,long,cb) {
 	var newUser;
-	
 	queryQueue("isUserOnQueue",[userid],isUserOnQueueQuery)
 
 	function isUserOnQueueQuery(result,content) {
 		if (content.Content) {
 			return cb(false,"The user "+userid+" is already on queue");
 		}
+		datalayer.getUserById(userid,getUserDB);
+		
+	}
+
+	function getUserDB(result,content) {
+		if (!result)
+			return cb(false,content);
 		var userlocation=new gu.LatLon(lat,long);
-		newUser=new queueUser(userid,userlocation);
+		newUser=new queueUser(userid,userlocation,content.extension);
 		datalayer.addUserToQueue(newUser,addToQueueDB);
 	}
 
@@ -128,7 +135,7 @@ exports.addToQueue = function(userid,lat,long,cb) {
 		if (!result)
 			return cb(false,content);
 
-		queryQueue("addToQueue",[userid,lat,long],addToQueueQuery);
+		queryQueue("addToQueue",[userid,lat,long,newUser.extension],addToQueueQuery);
 	}
 
 
@@ -201,6 +208,7 @@ exports.takeNextUserFromQueue = function(cb) {
 			return cb(false,content.Error);
 
 		nextUser=content.Content;
+		console.log(nextUser);
 		datalayer.takeUserFromQueue(nextUser.userid,takeNextUserFromQueueDB);
 
 	}
@@ -211,6 +219,8 @@ exports.takeNextUserFromQueue = function(cb) {
 			response.userid=nextUser.userid;
 			response.lat=nextUser.lat;
 			response.long=nextUser.lon;
+			response.extension=nextUser.extension;
+			console.log(response);
 			return cb(true,response);
 		}
 		else {

@@ -3,19 +3,18 @@
 var restify = require("restify"); //restify module
 var restifyOAuth2 = require("restify-oauth2"); //oauth2 module for restify
 var fs = require('fs');
-var nconf = require('nconf').file({ file: './config.json' }); //configuration modules
+var nconf = require('nconf').file({ file: './config/config.json' }); //configuration modules
 var log = require('./libs/log')(nconf.get("application:mode"),nconf.get("application:logfile")); //wrapper for the loggin module winston
 var dbclient = require('./libs/dbconnect')(nconf,log); //wrapper for the mariadb module that connect to db by itself
 var datalayer = require('./libs/datalayer')(dbclient);
 var hooks=require('./libs/hooks')(datalayer,log); //hooks modules for Oauth2
-//var child=require('./libs/fork_queue')('./libs/backqueue.js',log);
 var queue=require('./libs/queue2')(datalayer); //The queue module
 var cleanqueue=require('./libs/cleanqueue')(queue,log);
 var apihandler = require('./libs/apihandler')(nconf,datalayer,log,queue); //The api handlers module
 var apiroutes=require('./libs/apiroutes')(apihandler); //The api routes module
 var secretauth=require('./libs/secretauth') //The restify module for messages encryption
+var connfilter=require('./libs/connfilter'); //The restify module for connection filtering
 
-console.log(process.env.NODE_UNIQUE_ID);
 
 var inspect = require('util').inspect;
 var localizations=require('./libs/localizations')(datalayer);
@@ -42,8 +41,8 @@ function User(userid,location) {
 var usuario=new User('1',new gu.LatLon(10.20,50.15));
 
 //Datalayer test
-/*
-datalayer.getUserById(1,cb);
+
+/*datalayer.getUserById(1,cb);
 datalayer.getAllTokens(cb);
 datalayer.getToken('asdfghjkl',cb);
 datalayer.setTokenScope('asdfghjkl','DRIVER',cb);
@@ -57,12 +56,8 @@ datalayer.getAllSecrets(cb);
 datalayer.getLocalizationById('1',cb);
 datalayer.addUserToQueue(usuario,cb);
 datalayer.takeUserFromQueue('1',cb);
-
-usuario.location=new gu.LatLon(11.13,25.80);
-usuario.lastUpdate=new Date();
-datalayer.updateDriverLocation(usuario,cb);
-
 datalayer.emptyQueue(cb);
+datalayer.getUserExtensionById('1',cb);
 */
 
 
@@ -98,8 +93,10 @@ var server = restify.createServer({
 	certificate: fs.readFileSync(nconf.get("server:sslcertificate")),
 });
 
+require('./libs/failover')(datalayer,log);
 require('./libs/shutdown')(server,dbclient,datalayer,log);
 
+server.use(connfilter(dbclient));
 server.use(restify.bodyParser({ mapParams: false }));
 server.use(secretauth(datalayer));
 server.use(restify.authorizationParser());
@@ -115,7 +112,7 @@ server=require('./libs/serversetup')(server,apiroutes);
 });
 */
 server.listen(nconf.get("server:port"), function() {
-  log.log("info",'%s listening at %s', server.name, server.url);
+	log.log("info",'%s listening at %s', server.name, server.url);
 });
 
 

@@ -1,22 +1,27 @@
 "use strict";
 var gu = require('geoutils');
 var _ = require('underscore');
+var queueUser = require('./queueuser');
 var zmq = require('zmq');
-var nano = require('nanomsg');
 var queue=[];
 var responder = zmq.socket('router');
 
 console.log("Queue process iniciated");
 
 /**
- * The object for the user inside the queue
- * @param {string} userid   The user id
- * @param {object} location The location of the user (geoutil)
+ * Check if the object contains the prodived parameters
+ * @param  {object} obj The object
+ * @param  {array} requiredParam The required parameters
+ * @return {Boolean}     True if it has them, false if not
  */
-function queueUser(userid,location) {
-	this.userid=userid;
-	this.location=location;
-	this.lastUpdate=new Date();
+function objContains(obj,requiredParam) {
+	var result=true;
+	for (var i=0;i<requiredParam.length;i++) {
+		if (!_.has(obj,requiredParam[i])) {
+			result=false;
+		}
+	}
+	return result;
 }
 
 
@@ -102,12 +107,12 @@ function getPositionOfUserExternal(userid) {
  * @param {double}   lat    The latitude coordinate of the user
  * @param {double}   long   The longitude coordinate of the user
  */
-function addToQueue(userid,lat,long) {
+function addToQueue(userid,lat,long,extension) {
 	var newUser;
 
 	if (!isUserOnQueue(userid)) {
 		var userlocation=new gu.LatLon(lat,long);
-		newUser=new queueUser(userid,userlocation);
+		newUser=new queueUser(userid,userlocation,extension);
 		queue.push(newUser);
 		return {State:"True",Content:"User added to queue"};
 
@@ -115,6 +120,41 @@ function addToQueue(userid,lat,long) {
 	else {
 		return {State:"False",Error:"The user "+userid+" is already on queue"}
 	}
+}
+
+
+/**
+ * Adds a list of users to the queue. It's suppone to be user exclusively by the
+ * failover module, so it doesn't follow the standard result pattern.
+ * @param {array} listOfUsers An array containing the users. Format: [{userid,lat,long}, ...]
+ */
+function addListToQueue(listOfUsers) {
+	var result={};
+	var errors=[];
+	var state=true;
+
+	for (var i in listOfUsers) {
+		var cUser=listOfUsers[i];
+		if (!objContains(cUser,['userid','lat','long'])) {
+			errors.push("The user has an invalid format");
+			state=false;
+			continue;
+		}
+		var addResult=addToQueue.apply(this,[cUser.userid,cUser.lat,cUser.long]);
+		if (addResult.State!=="True") {
+			errors.push(addResult.Error);
+			state=false;
+		}
+	}
+	result.State=state;
+	if (state) {
+		result.Content="Users added to queue";
+	}
+	else {
+		result.Error=errors;
+	}
+	return result;
+
 }
 
 
@@ -146,6 +186,7 @@ function takeNextUserFromQueue() {
 		newUser.userid=nextUser.userid;
 		newUser.lat=nextUser.location.lat();
 		newUser.lon=nextUser.location.lon();
+		newUser.extension=nextUser.extension;
 		return {State:"True",Content:newUser};
 		
 	}
@@ -266,39 +307,55 @@ function messageRouter(jmessage) {
 	var result;
 
 	switch(reqFunction) {
+
 		case "isUserOnQueue":
 			result=isUserOnQueueExternal.apply(this,reqArguments);
 			break;
+
 		case "isQueueEmpty":
 			result=isQueueEmptyExternal.apply(this,reqArguments);
 			break;
+
 		case "getPositionOfUser":
 			result=getPositionOfUserExternal.apply(this,reqArguments);
 			break;
+
 		case "addToQueue":
 			result=addToQueue.apply(this,reqArguments);
 			break;
+
+		case "addListToQueue":
+			result=addListToQueue.apply(this,reqArguments);
+			break;
+
 		case "takeUserFromQueue":
 			result=takeUserFromQueue.apply(this,reqArguments);
 			break;
+
 		case "takeNextUserFromQueue":
 			result=takeNextUserFromQueue.apply(this,reqArguments);
 			break;
+
 		case "getQueueContent":
 			result=getQueueContent.apply(this,reqArguments);
 			break;
+
 		case "getUserLocation":
 			result=getUserLocation.apply(this,reqArguments);
 			break;
+
 		case "updateDriverLocation":
 			result=updateDriverLocation.apply(this,reqArguments);
 			break;
+
 		case "getUserLastUpdate":
 			result=getUserLastUpdate.apply(this,reqArguments);
 			break;
+
 		case "getAllLastUpdates":
 			result=getAllLastUpdates.apply(this,reqArguments);
 			break;
+
 		default:
 			result={State:"False",Error:"Invalid function name"};
 	}
@@ -317,8 +374,8 @@ responder.on('message', function() {
 	}
 );
 
-responder.bindSync('ipc://taxiserver');
-
+//responder.bindSync('ipc://taxiserver');
+responder.bindSync('ipc:///tmp/taxiserver');
 process.on('SIGINT', function() {
 	responder.close();
 });

@@ -13,7 +13,6 @@
     "geoutils": "^0.1.0",
     "jsdoc": "^3.3.0",
     "mariasql": "^0.1.22",
-    "nanomsg": "^1.1.1",
     "nconf": "^0.7.1",
     "restify": "^2.8.5",
     "restify-oauth2": "^4.0.2",
