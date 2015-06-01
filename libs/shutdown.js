@@ -26,22 +26,27 @@ module.exports = shutdown;
 
 function closeServer(cb) {
 	server.close()
+	setTimeout(function(){
+		cb(null,null);	
+	},1000)
+	
 	server.on('close',function(info) {
 				log.info("restify server closed");
-				cb(null,null);
 			});
 }
 
 function closeDB(cb) {
 	if (dbclient.connected) {
 		dbclient.end();
+		setTimeout(function(){
+			cb(null,null);	
+		},1000)
 	}
 	else {
 		cb(null,null);
 	}
 	dbclient.on('close',function(info) {
 				log.info("Server closed");
-				cb(null,null);
 			});
 }
 
@@ -49,8 +54,11 @@ function clearQueue(cb) {
 	if (dbclient.connected) {
 		datalayer.emptyQueue(function(result,content){
 			log.info("Queue cleaned")
-			cb(null,null);
 		});
+		setTimeout(function(){
+			cb(null,null);	
+		},1000)
+		
 	}
 	else {
 		cb(null,null);
@@ -65,9 +73,9 @@ function exitHandler(code) {
 	Sync(function(){
 		try {
 			log.info("Shuting down process started");
-			closeServer.sync(null);
 			clearQueue.sync(null);
 			closeDB.sync(null);
+			closeServer.sync(null);
 			process.exit();
 		}
 		catch(error) {
