@@ -18,8 +18,18 @@ var requester = zmq.socket('req');
 function QueueMain(dblayer,config) {
 	datalayer=dblayer;
 	nconf=config;
-	//requester.connect("ipc:///tmp/taxiserver");
+
 	requester.connect(nconf.get("queue:ipcpath"));
+
+	process.on('SIGINT', function() {
+		responder.close();
+	});
+
+	//In case of an error
+	process.on('uncaughtException', function (err) {
+		responder.close();
+	});
+
 	return exports;
 }
 module.exports = QueueMain;
@@ -211,7 +221,6 @@ exports.takeNextUserFromQueue = function(cb) {
 			return cb(false,content.Error);
 
 		nextUser=content.Content;
-		console.log(nextUser);
 		datalayer.takeUserFromQueue(nextUser.userid,takeNextUserFromQueueDB);
 
 	}
@@ -223,7 +232,6 @@ exports.takeNextUserFromQueue = function(cb) {
 			response.lat=nextUser.lat;
 			response.long=nextUser.lon;
 			response.extension=nextUser.extension;
-			console.log(response);
 			return cb(true,response);
 		}
 		else {

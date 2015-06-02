@@ -190,7 +190,7 @@ function sendMessage6(result,content) {
 //tokenClient.get('/api/1',processResponse);
 //tokenClient.get('/api/1.0.0/1/users/drivers',processResponse);
 //tokenClient.get('/api/1.0.0/1/users/drivers/2',processResponse);
-tokenClient.get('/api/1.0.0/1/queue',processResponse);
+//tokenClient.get('/api/1.0.0/1/queue',processResponse);
 //tokenClient.post('/api/1.0.0/1/queue',{"latitude":"51.5125","longitude":"7.485"},processResponse);
 //tokenClient.get('/api/1.0.0/1/queue/1',processResponse);
 //tokenClient.del('/api/1.0.0/1/queue/1', processResponse);

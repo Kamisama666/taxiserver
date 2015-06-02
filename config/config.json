@@ -24,6 +24,7 @@
 		"oldversions":[]
 	},
 	"queue": {
-		"ipcpath":"ipc:///tmp/taxiserver"
+		"ipcpath":"ipc:///home/kamisama666/workspace/taxiserver/queue/taxiserver",
+		"logfile":"logs/queue.log"
 	}
 }

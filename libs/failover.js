@@ -1,10 +1,11 @@
 "use strict";
 var datalayer;
 var log;
+var nconf;
 var Sync = require('sync');
 var zmq = require('zmq');
 var requester = zmq.socket('req');
-var ipcpath='ipc://taxiserver';
+var ipcpath;
 
 var queuetable_userid='userid';
 var queuetable_latitude='lat';
@@ -12,9 +13,22 @@ var queuetable_longitude='lng';
 var queuetable_lastupdate='lastupdate';
 
 
-function Failover(dblayer,logging) {
+function Failover(dblayer,logging,config) {
 	datalayer=dblayer;
 	log=logging;
+	nconf=config;
+
+	ipcpath=nconf.get("queue:ipcpath");
+
+	//Normal shutdown
+	process.on('SIGINT', function() {
+		responder.close();
+	});
+
+	//In case of an error
+	process.on('uncaughtException', function (err) {
+		responder.close();
+	});
 
 	Sync(function(){
 		queryDbQueue.sync(null);

@@ -27,29 +27,11 @@
     <section>
         <article>
             <pre class="prettyprint source linenums"><code>"use strict";
-var _=require('underscore');
+var _ = require('underscore');
+var fs = require('fs');
+var path = require('path');
 var dbclient;
-
-
-var usertable='usuarios'; 
-var usertable_id='id';
-var usertable_name='nombre';
-var usertable_type='tipo';
-var usertable_secret='secret';
-var tokentable='tokens';
-var tokentable_id='id';
-var tokentable_userid='userid';
-var tokentable_token='token';
-var tokentable_scope='scope';
-var localtable='localizaciones';
-var localtable_id='id';
-var queuetable='queue';
-var queuetable_id='id';
-var queuetable_userid='userid';
-var queuetable_latitude='lat';
-var queuetable_longitude='lng';
-var queuetable_lastupdate='lastupdate';
-
+var dbconfig=JSON.parse(fs.readFileSync(path.join(__dirname, '../config/dbconfig.json'), 'utf8'));
 
 
 /**
@@ -140,7 +122,7 @@ exports.getUserById = function(userid,cb) {
 		cb(false,new Error('Invalid user ID'));
 	}
 	else {
-		dbclient.query("select * from "+usertable+" where "+usertable_id+" = '"+safeid+"'").on
+		dbclient.query("select * from "+dbconfig.usertable+" where "+dbconfig.usertable_id+" = '"+safeid+"'").on
 		(
 			'result', 
 			function(result) 
@@ -183,7 +165,7 @@ exports.getUserByIdShort = function(userid,cb) {
 		cb(false,new Error('Invalid user ID'));
 	}
 	else {
-		dbclient.query("select "+usertable_id+","+usertable_name+" from "+usertable+" where "+usertable_id+" = '"+safeid+"'").on
+		dbclient.query("select "+dbconfig.usertable_id+","+dbconfig.usertable_name+" from "+dbconfig.usertable+" where "+dbconfig.usertable_id+" = '"+safeid+"'").on
 		(
 			'result', 
 			function(result) 
@@ -216,13 +198,51 @@ exports.getUserByIdShort = function(userid,cb) {
 }
 
 
+exports.getUserExtensionById = function(userid,cb) {
+	var safeid=parseInt(userid).toString();
+	if (!isValidID(safeid))
+		return cb(false,new Error('Invalid user ID'));
+	var query="select "+dbconfig.queuetable_userid+","+dbconfig.queuetable_latitude+","+dbconfig.queuetable_longitude+","+dbconfig.queuetable_lastupdate+","+dbconfig.usertable_extension;
+	query+=" from "+dbconfig.queuetable+" join "+dbconfig.usertable+" on "+dbconfig.queuetable_userid+"="+dbconfig.usertable_id+" where "+dbconfig.usertable_id+"="+userid;
+
+	dbclient.query(query).on
+	(
+	'result', 
+		function(result) 
+		{
+			var someResult=false;
+			result.on
+			(
+				'row', 
+				function(row) {
+					someResult=true;
+					cb(true,row); 
+				}
+			).on
+			(
+				'error', 
+				function(err) { cb(false,err) }
+			).on
+			(
+				'end',
+				function(info) { 
+					if (!someResult) {
+						cb(false,info)
+					}
+				}
+			);
+	 	}
+	);
+}
+
+
 /**
  * Devuelve todos los tokens de la base de datos
  * @param  {Function} cb       functión de callback
  */
 exports.getAllTokens = function(cb) {
 	
-	dbclient.query("select "+tokentable_id+","+tokentable_token+" from "+tokentable).on
+	dbclient.query("select "+dbconfig.tokentable_id+","+dbconfig.tokentable_token+" from "+dbconfig.tokentable).on
 	(
 		'result', 
 		function(result) 
@@ -252,7 +272,7 @@ exports.getAllTokens = function(cb) {
  * @param  {Function} cb       functión de callback
  */
 exports.getToken = function(reqToken,cb) {
-	dbclient.query("select "+tokentable_id+","+tokentable_token+" from "+tokentable).on
+	dbclient.query("select "+dbconfig.tokentable_id+","+dbconfig.tokentable_token+" from "+dbconfig.tokentable).on
 	(
 		'result', 
 		function(result) 
@@ -283,7 +303,7 @@ exports.getToken = function(reqToken,cb) {
 
 
 function setTokenScopeWrapper(tokenid,scope,cb) {
-	dbclient.query("update "+tokentable+" set scope='"+scope+"' where "+tokentable_id+"='"+tokenid+"'").on
+	dbclient.query("update "+dbconfig.tokentable+" set scope='"+scope+"' where "+dbconfig.tokentable_id+"='"+tokenid+"'").on
 	(
 		'result', 
 		function(result) 
@@ -343,7 +363,7 @@ exports.getTokensOfUser = function(userid,cb) {
 	}
 	else {
 		dbclient.query(
-		"select "+tokentable_id+","+tokentable_token+","+tokentable_scope+","+tokentable_userid+" from "+tokentable+" where "+tokentable_userid+"="+safeid
+		"select "+dbconfig.tokentable_id+","+dbconfig.tokentable_token+","+dbconfig.tokentable_scope+","+dbconfig.tokentable_userid+" from "+dbconfig.tokentable+" where "+dbconfig.tokentable_userid+"="+safeid
 	).on
 		(
 			'result', 
@@ -381,7 +401,7 @@ exports.getTokenById = function(tokenid,cb) {
 		cb(false,new Error('Invalid user ID'));
 	}
 	else {
-		dbclient.query("select "+tokentable_token+" from "+tokentable+" where "+tokentable_id+"="+safeid).on(
+		dbclient.query("select "+dbconfig.tokentable_token+" from "+dbconfig.tokentable+" where "+dbconfig.tokentable_id+"="+safeid).on(
 			'result', 
 			function(result) 
 			{
@@ -426,7 +446,7 @@ exports.createTokenForUser = function(userid,token,cb) {
 	}
 	else {
 		var myresult;
-		dbclient.query("insert into "+tokentable+" (token,userid) values ('"+token+"',"+safeid+")").on(
+		dbclient.query("insert into "+dbconfig.tokentable+" (token,userid) values ('"+token+"',"+safeid+")").on(
 
 			'result', 
 			function(result) 
@@ -453,7 +473,7 @@ exports.createTokenForUser = function(userid,token,cb) {
 
 
 function deleteTokenWrapper(tokenid,cb) {
-	dbclient.query("delete from "+tokentable+" where "+tokentable_id+"="+tokenid).on(
+	dbclient.query("delete from "+dbconfig.tokentable+" where "+dbconfig.tokentable_id+"="+tokenid).on(
 		'result',
 		function(result)
 		{
@@ -494,7 +514,7 @@ exports.deleteToken=function(token,cb) {
  */
 exports.getUsersByType = function(type,cb) {
 	if (isValidType(type)) {
-		dbclient.query("select "+usertable_id+","+usertable_name+" from "+usertable+" where "+usertable_type+"='"+type+"'" ).on(
+		dbclient.query("select "+dbconfig.usertable_id+","+dbconfig.usertable_name+" from "+dbconfig.usertable+" where "+dbconfig.usertable_type+"='"+type+"'" ).on(
 		'result',
 		function(result)
 		{
@@ -534,7 +554,7 @@ exports.getAllDrivers = function(cb) {
  * @param  {Function} cb       Callback function
  */
 exports.getAllLocalizations = function(cb) {
-	dbclient.query("select * from "+localtable).on(
+	dbclient.query("select * from "+dbconfig.localtable).on(
 		'result',
 		function(result) {
 			var resultList=[];
@@ -567,7 +587,7 @@ exports.getLocalizationById = function(id, cb) {
 		cb(false,"Invalid Localization ID");
 		return;
 	}
-	dbclient.query("select * from "+localtable+" where "+localtable_id+"="+id).on(
+	dbclient.query("select * from "+dbconfig.localtable+" where "+dbconfig.localtable_id+"="+id).on(
 		'result', 
 		function(result) {
 		var someResult=false;
@@ -602,7 +622,7 @@ exports.getLocalizationById = function(id, cb) {
  * @param  {Function} cb       Callback function
  */
 exports.getAllSecrets = function(cb) {
-	dbclient.query("select "+usertable_id+","+usertable_secret+" from "+usertable).on(
+	dbclient.query("select "+dbconfig.usertable_id+","+dbconfig.usertable_secret+" from "+dbconfig.usertable).on(
 		'result',
 		function(result) {
 			var resultList=[];
@@ -634,7 +654,7 @@ exports.addUserToQueue = function(user,cb) {
 		return cb(false,"Invalid Localization ID");
 		
 	}
-	var queryFields=queuetable_userid+","+queuetable_longitude+","+queuetable_latitude+","+queuetable_lastupdate;
+	var queryFields=dbconfig.queuetable_userid+","+dbconfig.queuetable_longitude+","+dbconfig.queuetable_latitude+","+dbconfig.queuetable_lastupdate;
 	var queryValues=user.userid+","+user.location.lon()+","+user.location.lat()+",'"+dateToDatetime(user.lastUpdate)+"'";
 	var myresult;
 	dbclient.query("insert into queue ("+queryFields+") values("+queryValues+")").on(
@@ -665,7 +685,7 @@ exports.addUserToQueue = function(user,cb) {
  * @param  {Function} cb       Callback function
  */
 exports.takeUserFromQueue = function(userid,cb) {
-	dbclient.query("delete from "+queuetable+" where "+queuetable_userid+"="+userid).on(
+	dbclient.query("delete from "+dbconfig.queuetable+" where "+dbconfig.queuetable_userid+"="+userid).on(
 		'result',
 		function(result)
 		{
@@ -692,12 +712,12 @@ exports.updateUserFromQueue = function(user,cb) {
 	if (!isValidID(user.userid)) {
 		return cb(false,"Invalid Localization ID");
 	}
-	var queryUpdates=queuetable_longitude+"="+user.location.lon()+",";
-	queryUpdates+=queuetable_latitude+"="+user.location.lat()+",";
-	queryUpdates+=queuetable_lastupdate+"='"+dateToDatetime(user.lastUpdate)+"'";
-	var queryWhere=queuetable_userid+"="+user.userid;
+	var queryUpdates=dbconfig.queuetable_longitude+"="+user.location.lon()+",";
+	queryUpdates+=dbconfig.queuetable_latitude+"="+user.location.lat()+",";
+	queryUpdates+=dbconfig.queuetable_lastupdate+"='"+dateToDatetime(user.lastUpdate)+"'";
+	var queryWhere=dbconfig.queuetable_userid+"="+user.userid;
 
-	dbclient.query("update "+queuetable+" set "+queryUpdates+" where "+queryWhere).on(
+	dbclient.query("update "+dbconfig.queuetable+" set "+queryUpdates+" where "+queryWhere).on(
 		'result', 
 		function(result) 
 		{
@@ -724,7 +744,7 @@ exports.updateUserFromQueue = function(user,cb) {
  * @param  {Function} cb       Callback function
  */
 exports.emptyQueue= function(cb) {
-	dbclient.query("delete from "+queuetable).on(
+	dbclient.query("delete from "+dbconfig.queuetable).on(
 		'result', 
 		function(result) 
 		{
@@ -744,6 +764,35 @@ exports.emptyQueue= function(cb) {
 	 	}
 	);
 
+}
+
+
+/**
+ * Gets all user on queue
+ * @param  {Function} cb       Callback function
+ */
+exports.getUsersFromQueue = function(cb) {
+
+	var querySelected=dbconfig.queuetable_userid+","+dbconfig.queuetable_longitude+","+dbconfig.queuetable_latitude+","+dbconfig.queuetable_lastupdate;
+	dbclient.query("select "+querySelected+" from "+dbconfig.queuetable).on(
+		'result',
+		function(result) {
+			var resultList=[];
+			result.on
+			(
+				'row', 
+				function(row) { resultList.push(row); }
+			).on
+			(
+				'error',
+				function(err) { cb(false,err) }
+			).on
+			(
+				'end',
+				function(info) { cb(true,resultList); }
+			)
+		}
+	);
 }</code></pre>
         </article>
     </section>
@@ -754,13 +803,13 @@ exports.emptyQueue= function(cb) {
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#addUserToQueue">addUserToQueue</a></li><li><a href="global.html#createTokenForUser">createTokenForUser</a></li><li><a href="global.html#datalayer">datalayer</a></li><li><a href="global.html#dateToDatetime">dateToDatetime</a></li><li><a href="global.html#deleteToken">deleteToken</a></li><li><a href="global.html#emptyQueue">emptyQueue</a></li><li><a href="global.html#getAllDrivers">getAllDrivers</a></li><li><a href="global.html#getAllLocalizations">getAllLocalizations</a></li><li><a href="global.html#getAllSecrets">getAllSecrets</a></li><li><a href="global.html#getAllTokens">getAllTokens</a></li><li><a href="global.html#getLocalizationById">getLocalizationById</a></li><li><a href="global.html#getToken">getToken</a></li><li><a href="global.html#getTokenById">getTokenById</a></li><li><a href="global.html#getTokensOfUser">getTokensOfUser</a></li><li><a href="global.html#getUserById">getUserById</a></li><li><a href="global.html#getUserByIdShort">getUserByIdShort</a></li><li><a href="global.html#getUsersByType">getUsersByType</a></li><li><a href="global.html#isValidID">isValidID</a></li><li><a href="global.html#isValidType">isValidType</a></li><li><a href="global.html#setTokenScope">setTokenScope</a></li><li><a href="global.html#takeUserFromQueue">takeUserFromQueue</a></li><li><a href="global.html#updateUserFromQueue">updateUserFromQueue</a></li><li><a href="global.html#zeroSafe">zeroSafe</a></li><li><a href="global.html#zeroSafeYear">zeroSafeYear</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#addUserToQueue">addUserToQueue</a></li><li><a href="global.html#createTokenForUser">createTokenForUser</a></li><li><a href="global.html#datalayer">datalayer</a></li><li><a href="global.html#dateToDatetime">dateToDatetime</a></li><li><a href="global.html#deleteToken">deleteToken</a></li><li><a href="global.html#emptyQueue">emptyQueue</a></li><li><a href="global.html#getAllDrivers">getAllDrivers</a></li><li><a href="global.html#getAllLocalizations">getAllLocalizations</a></li><li><a href="global.html#getAllSecrets">getAllSecrets</a></li><li><a href="global.html#getAllTokens">getAllTokens</a></li><li><a href="global.html#getLocalizationById">getLocalizationById</a></li><li><a href="global.html#getToken">getToken</a></li><li><a href="global.html#getTokenById">getTokenById</a></li><li><a href="global.html#getTokensOfUser">getTokensOfUser</a></li><li><a href="global.html#getUserById">getUserById</a></li><li><a href="global.html#getUserByIdShort">getUserByIdShort</a></li><li><a href="global.html#getUsersByType">getUsersByType</a></li><li><a href="global.html#getUsersFromQueue">getUsersFromQueue</a></li><li><a href="global.html#isValidID">isValidID</a></li><li><a href="global.html#isValidType">isValidType</a></li><li><a href="global.html#setTokenScope">setTokenScope</a></li><li><a href="global.html#takeUserFromQueue">takeUserFromQueue</a></li><li><a href="global.html#updateUserFromQueue">updateUserFromQueue</a></li><li><a href="global.html#zeroSafe">zeroSafe</a></li><li><a href="global.html#zeroSafeYear">zeroSafeYear</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.3.0</a> on Wed May 13 2015 12:10:53 GMT+0200 (CEST)
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.3.0</a> on Mon Jun 01 2015 12:39:17 GMT+0200 (CEST)
 </footer>
 
 <script> prettyPrint(); </script>
