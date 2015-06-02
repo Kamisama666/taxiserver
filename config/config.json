@@ -3,6 +3,7 @@
 		"name":"Taxiserver",
 		"version":"0.1.0",
 		"mode":"debug",
+		"rootpath":"/home/kamisama666/workspace/taxiserver/",
 		"logfile":"logs/server.log"
 	},
 	"database": {
@@ -18,8 +19,11 @@
   		"sslcertificate":"./cert/cert.pem",
   		"sslkey":"./cert/key.pem"
 	},
-	"api":{
+	"api": {
 		"version":"1.0.0",
 		"oldversions":[]
+	},
+	"queue": {
+		"ipcpath":"ipc:///tmp/taxiserver"
 	}
 }

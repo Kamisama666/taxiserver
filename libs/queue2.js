@@ -3,6 +3,7 @@ var gu = require('geoutils');
 var _ = require('underscore');
 var zmq = require('zmq');
 var datalayer;
+var nconf;
 var queueUser = require('./queueuser');
 var msgid=1;
 var requester = zmq.socket('req');
@@ -14,9 +15,11 @@ var requester = zmq.socket('req');
  * Creates a queue for users. The queue is stored in memory and in a database.
  * @param {object} dblayer MariaDB connexion object
  */
-function QueueMain(dblayer) {
+function QueueMain(dblayer,config) {
 	datalayer=dblayer;
-	requester.connect("ipc:///tmp/taxiserver");
+	nconf=config;
+	//requester.connect("ipc:///tmp/taxiserver");
+	requester.connect(nconf.get("queue:ipcpath"));
 	return exports;
 }
 module.exports = QueueMain;

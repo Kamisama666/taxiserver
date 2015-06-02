@@ -7,14 +7,13 @@ var nconf = require('nconf').file({ file: './config/config.json' }); //configura
 var log = require('./libs/log')(nconf.get("application:mode"),nconf.get("application:logfile")); //wrapper for the loggin module winston
 var dbclient = require('./libs/dbconnect')(nconf,log); //wrapper for the mariadb module that connect to db by itself
 var datalayer = require('./libs/datalayer')(dbclient);
-var hooks=require('./libs/hooks')(datalayer,log); //hooks modules for Oauth2
-var queue=require('./libs/queue2')(datalayer); //The queue module
-var cleanqueue=require('./libs/cleanqueue')(queue,log);
+var hooks = require('./libs/hooks')(datalayer,log); //hooks modules for Oauth2
+var queue = require('./libs/queue2')(datalayer,nconf); //The queue module
+var cleanqueue = require('./libs/cleanqueue')(queue,log);
 var apihandler = require('./libs/apihandler')(nconf,datalayer,log,queue); //The api handlers module
-var apiroutes=require('./libs/apiroutes')(apihandler); //The api routes module
-var secretauth=require('./libs/secretauth') //The restify module for messages encryption
-var connfilter=require('./libs/connfilter'); //The restify module for connection filtering
-
+var apiroutes = require('./libs/apiroutes')(apihandler); //The api routes module
+var secretauth = require('./libs/secretauth') //The restify module for messages encryption
+var connfilter = require('./libs/connfilter'); //The restify module for connection filtering
 
 var inspect = require('util').inspect;
 var localizations=require('./libs/localizations')(datalayer);

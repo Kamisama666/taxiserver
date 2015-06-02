@@ -1,12 +1,14 @@
 "use strict";
 var gu = require('geoutils');
 var _ = require('underscore');
+var nconf = require('nconf').file({ file: '../config/config.json' }); //configuration modules
+var log = require('./log')(nconf.get("application:mode"),nconf.get("application:rootpath")+nconf.get("application:logfile")); //wrapper for the loggin module winston
 var queueUser = require('./queueuser');
 var zmq = require('zmq');
 var queue=[];
 var responder = zmq.socket('router');
 
-console.log("Queue process iniciated");
+log.info("Queue process iniciated");
 
 /**
  * Check if the object contains the prodived parameters
@@ -95,7 +97,7 @@ function getPositionOfUser(userid) {
 function getPositionOfUserExternal(userid) {
 	var result={State:"True"};
 	var position=getPositionOfUser(userid);
-	result.Content=(position!=='1')?position+1:-1;
+	result.Content=(position!==-1)?position+1:-1;
 	return result;
 }
 
@@ -374,9 +376,14 @@ responder.on('message', function() {
 	}
 );
 
-//responder.bindSync('ipc://taxiserver');
-responder.bindSync('ipc:///tmp/taxiserver');
+responder.bindSync(nconf.get("queue:ipcpath"));
+
 process.on('SIGINT', function() {
+	log.info("Queue terminated normally.");
+	responder.close();
+});
+process.on('uncaughtException', function (err) {
+	log.log('error','Queue terminated with errors: '+err);
 	responder.close();
 });
 
