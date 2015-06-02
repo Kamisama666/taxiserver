@@ -10,6 +10,23 @@ var responder = zmq.socket('router');
 
 log.info("Queue process iniciated");
 
+
+//Connect the router to the queue
+responder.bindSync(nconf.get("queue:ipcpath"));
+
+//Normal shutdown
+process.on('SIGINT', function() {
+	log.info("Queue terminated normally.");
+	responder.close();
+});
+
+//In case of an error
+process.on('uncaughtException', function (err) {
+	log.log('error','Queue terminated with errors: '+err);
+	responder.close();
+});
+
+
 /**
  * Check if the object contains the prodived parameters
  * @param  {object} obj The object
@@ -376,16 +393,7 @@ responder.on('message', function() {
 	}
 );
 
-responder.bindSync(nconf.get("queue:ipcpath"));
 
-process.on('SIGINT', function() {
-	log.info("Queue terminated normally.");
-	responder.close();
-});
-process.on('uncaughtException', function (err) {
-	log.log('error','Queue terminated with errors: '+err);
-	responder.close();
-});
 
 
 

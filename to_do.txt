@@ -11,10 +11,18 @@
 	-Capturar errores en datacrypt.decrypt.decipher ✓
 	-Almacenar la cola en la DB ✓
 	-Vaciar la cola en DB al finalizar proceso ✓
-	-Añadir a queue un funcion para sincronizar la cola en memoria con la de la de la DB
-	-Un modulo de restify que retorne las conexiones cuando la base de datos esta caida
-	-Hacer un modulo que obtenga la estructura de la DB de un archivo JSON y haga un objeto con ella
-	-Hacer un modulo para la configuracion del servidor
+	-Dividir la cola en una en memoria y en la DB ✓
+	-Hacer que el proceso de shutdown también ser inicie con errores internos ✓
+	-Un modulo de restify que retorne las conexiones cuando la base de datos esta caida ✓
+	-Hacer un modulo que obtenga la estructura de la DB de un archivo JSON y haga un objeto con ella ✓
+	-Crear un modulo separado para el objeto usuario ✓
+	-Añadir la extension a objeto usuario y hacer que lo devuelva cuando consulte el commserver ✓
+	-Shutdown no es capaz de hacer la limpieza hasta que los clientes se desconectan ✓
+	-Que la cola tome el path de ipc del archivo de configuracion (mod. failover,queue2, backqueue) ✓
+	-La ruta de ipc no debería estar en /tmp ✓
+	-Make sure every zmq connexion is closed before the shutdown of the process ✓
+	-Make a proper test module
 
-#####Aplicacion###
+#####Modificados#####
+
 
